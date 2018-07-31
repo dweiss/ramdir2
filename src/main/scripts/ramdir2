@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Determine script home
+SCRIPT_HOME=`dirname "$0"`
+
+# Convert to real Windows paths from Unix-ish environments on Windows
+# because the java process will be Windows-native.
+OPTS=
+SHELLNAME=`uname`
+case "$SHELLNAME" in
+  CYGWIN*)
+    if [ -t 1 ]; then
+      # Java doesn't see CygWin as a console, so force it.
+      OPTS="$OPTS -Dconsole.updateable=true"
+    fi
+  ;;
+  MINGW*)
+    echo "> [WARNING] No support for mingw, sorry. Use CygWin cmd.exe directly."
+    exit 1
+  ;;
+esac
+
+# Try to determine terminal size.
+if [ -z "$COLUMNS" ]; then
+  COLUMNS=$(stty size 2>/dev/null)
+  if [ ! -z "$COLUMNS" ]; then
+     export COLUMNS=$( echo "$COLUMNS" | cut -d" " -f 2 )
+  fi
+fi
+
+# Collect and quote each arg. 
+all_args=
+for arg in "$@" ; do
+  all_args="$all_args \"$arg\""
+done
+
+# Launch.
+eval java $OPTS -jar \"$SCRIPT_HOME/lib/ramdir2-${project.version}.jar\"  "$all_args"
+exit $?

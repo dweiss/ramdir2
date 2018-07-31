@@ -1,0 +1,13 @@
+# Ignore incremental timestamp files.
+*-incremental.ts
+
+# IDE files
+.idea/
+*.iml
+bin/
+target/
+
+# Misc
+.DS_Store
+*.swp
+/*.log
