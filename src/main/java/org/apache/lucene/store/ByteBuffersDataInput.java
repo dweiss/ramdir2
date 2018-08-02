@@ -34,7 +34,7 @@ public final class ByteBuffersDataInput extends DataInput implements Accountable
     this.blocks = buffers.stream().map(buf -> buf.asReadOnlyBuffer()).toArray(ByteBuffer[]::new);
 
     if (blocks.length == 1) {
-      this.blockBits = 0;
+      this.blockBits = 32;
       this.blockMask = ~0;
     } else {
       final int blockBytes = determineBlockPage(buffers);

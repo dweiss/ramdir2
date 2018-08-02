@@ -1,8 +1,6 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.zip.CRC32;
 
@@ -57,54 +55,12 @@ public final class ByteBuffersIndexOutput extends IndexOutput {
   public void writeBytes(byte[] b, int length) throws IOException {
     ensureOpen();
     delegate.writeBytes(b, length);
+    crc.update(b, 0, length);
   }
 
-  @Override
-  public void writeInt(int i) throws IOException {
-    ensureOpen();
-    delegate.writeInt(i);
-  }
-
-  @Override
-  public void writeShort(short i) throws IOException {
-    ensureOpen();
-    delegate.writeShort(i);
-  }
-
-  @Override
-  public void writeLong(long i) throws IOException {
-    ensureOpen();
-    delegate.writeLong(i);
-  }
-
-  @Override
-  public void writeString(String s) throws IOException {
-    ensureOpen();
-    delegate.writeString(s);
-  }
-
-  @Override
-  public void copyBytes(DataInput input, long numBytes) throws IOException {
-    ensureOpen();
-    delegate.copyBytes(input, numBytes);
-  }
-
-  @Override
-  public void writeMapOfStrings(Map<String, String> map) throws IOException {
-    ensureOpen();
-    delegate.writeMapOfStrings(map);
-  }
-
-  @Override
-  public void writeSetOfStrings(Set<String> set) throws IOException {
-    ensureOpen();
-    delegate.writeSetOfStrings(set);
-  }
-  
   private void ensureOpen() {
     if (delegate == null) {
       throw new AlreadyClosedException("Already closed.");
     }
-  }
-  
+  }  
 }
