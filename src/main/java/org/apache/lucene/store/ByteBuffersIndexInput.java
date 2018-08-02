@@ -41,7 +41,8 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   @Override
   public ByteBuffersIndexInput slice(String sliceDescription, long offset, long length) throws IOException {
     ensureOpen();
-    return new ByteBuffersIndexInput(in.slice(offset, length), "Sliced offset=" + offset + ", length=" + length + " " + toString());
+    return new ByteBuffersIndexInput(in.slice(offset, length), 
+        "(sliced) offset=" + offset + ", length=" + length + " " + toString());
   }
 
   @Override
@@ -131,7 +132,7 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   @Override
   public void skipBytes(long numBytes) throws IOException {
     ensureOpen();
-    in.seek(in.position() + numBytes);
+    super.skipBytes(numBytes);
   }
 
   @Override
@@ -161,7 +162,7 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   @Override
   public IndexInput clone() {
     ensureOpen();
-    ByteBuffersIndexInput cloned = new ByteBuffersIndexInput(in.slice(0, in.size()), "Cloned: " + toString());
+    ByteBuffersIndexInput cloned = new ByteBuffersIndexInput(in.slice(0, in.size()), "(clone of) " + toString());
     return cloned;
   }
 

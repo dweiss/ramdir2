@@ -24,8 +24,8 @@ public final class ByteBuffersDirectory extends BaseDirectory {
   public static final BiFunction<String, ByteBuffersDataOutput, IndexInput> OUTPUT_CHUNKED_BUFFERS = 
       (fileName, output) -> {
         ByteBuffersDataInput dataInput = output.toDataInput();
-        String inputName = String.format(Locale.ROOT, "{} input (file={}, buffers={})",
-            ByteBuffersDataInput.class.getSimpleName(),
+        String inputName = String.format(Locale.ROOT, "%s (file=%s, buffers=%s)",
+            ByteBuffersIndexInput.class.getSimpleName(),
             fileName,
             dataInput.toString());
         return new ByteBuffersIndexInput(dataInput, inputName);
@@ -34,8 +34,8 @@ public final class ByteBuffersDirectory extends BaseDirectory {
   public static final BiFunction<String, ByteBuffersDataOutput, IndexInput> OUTPUT_CONSOLIDATED_BUFFERS = 
       (fileName, output) -> {
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Arrays.asList(ByteBuffer.wrap(output.toArray())));
-        String inputName = String.format(Locale.ROOT, "{} input (file={}, buffers={})",
-            ByteBuffersDataInput.class.getSimpleName(),
+        String inputName = String.format(Locale.ROOT, "%s (file=%s, buffers=%s)",
+            ByteBuffersIndexInput.class.getSimpleName(),
             fileName,
             dataInput.toString());
         return new ByteBuffersIndexInput(dataInput, inputName);
@@ -44,7 +44,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
   public static final BiFunction<String, ByteBuffersDataOutput, IndexInput> OUTPUT_BYTE_ARRAY_INDEX_INPUT = 
       (fileName, output) -> {
         byte[] array = output.toArray();
-        String inputName = String.format(Locale.ROOT, "{} input (file={}, length={})",
+        String inputName = String.format(Locale.ROOT, "%s (file=%s, length=%s)",
             ByteArrayIndexInput.class.getSimpleName(),
             fileName,
             array.length);
@@ -63,7 +63,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
               Integer.numberOfTrailingZeros(BitUtil.nextHighestPowerOfTwo(bufferList.get(0).capacity()));
         }
 
-        String inputName = String.format(Locale.ROOT, "{} (file={})",
+        String inputName = String.format(Locale.ROOT, "%s (file=%s)",
             ByteBuffersDirectory.class.getSimpleName(),
             fileName);
 

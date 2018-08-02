@@ -32,10 +32,10 @@ public final class ByteBuffersDataInput extends DataInput implements Accountable
     ensureAssumptions(buffers);
 
     this.blocks = buffers.stream().map(buf -> buf.asReadOnlyBuffer()).toArray(ByteBuffer[]::new);
-    
+
     if (blocks.length == 1) {
-      this.blockBits = 32;
-      this.blockMask = (int) ((1L << blockBits) - 1);
+      this.blockBits = 0;
+      this.blockMask = ~0;
     } else {
       final int blockBytes = determineBlockPage(buffers);
       this.blockBits = Integer.numberOfTrailingZeros(blockBytes);

@@ -121,7 +121,7 @@ public class RamDirCmd extends CommandModule {
     toDelete.add(tmp);
     try (Progress progress = new Progress(ConsoleAware.newConsoleProgressView(Arrays.asList()))) {
       // Create a temporary index.
-      try (Directory srcDir = FSDirectory.open(tmp)) {
+      try (Directory srcDir = new ByteBuffersDirectory()) {
         ArrayList<String> terms = IntStream.range(0, uniqTermCount)
               .mapToObj(i -> String.format(Locale.ROOT, "%06d", i))
               .collect(Collectors.toCollection(ArrayList::new));
@@ -149,7 +149,7 @@ public class RamDirCmd extends CommandModule {
                   }
                   w.addDocument(doc);
                   t.increment();
-                } catch (IOException e) {
+                } catch (Exception e) {
                   throw new RuntimeException(e);
                 }                
               }
