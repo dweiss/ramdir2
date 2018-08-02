@@ -35,10 +35,12 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.store.SingleInstanceLockFactory;
 import org.apache.lucene.util.IOUtils;
 
 import com.beust.jcommander.Parameter;
@@ -58,9 +60,12 @@ public class RamDirCmd extends CommandModule {
   final static String CMD_NAME = "ramdir";
 
   public static enum DirImpl {
+    RAM_DIR_CHUNKED,
+    RAM_DIR_CONSOLIDATED,
+    RAM_DIR_BAOS,
+    RAM_DIR_LUCENE,
     FS_DIR,
     RAM_DIR,
-    RAM_DIR2
   }
   
   @Parameter(
@@ -68,14 +73,15 @@ public class RamDirCmd extends CommandModule {
       listConverter = IntStringConverter.class)
   List<Integer> threadCounts;
   {
-    threadCounts = IntStream.range(1, Runtime.getRuntime().availableProcessors())
-        .filter(v -> v == 1 || v % 2 == 0)
+    int processors = Runtime.getRuntime().availableProcessors();
+    threadCounts = IntStream.range(1, processors + 1)
+        .filter(v -> v == 1 || v == processors || v % 2 == 0)
         .mapToObj(v -> (Integer) v)
         .collect(Collectors.toList());
   }
 
   @Parameter(names = "--time-ms")
-  int measurementTimeMillis = 5_000;
+  int measurementTimeMillis = 10_000;
 
   @Parameter(names = "--docs")
   int docs = 500_000;
@@ -182,8 +188,17 @@ public class RamDirCmd extends CommandModule {
             case RAM_DIR:
               dir = new RAMDirectory();
               break;
-            case RAM_DIR2:
-              dir = new RamDirectory2();
+            case RAM_DIR_CHUNKED:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_CHUNKED_BUFFERS);
+              break;
+            case RAM_DIR_BAOS:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_BYTE_ARRAY_INDEX_INPUT);
+              break;
+            case RAM_DIR_CONSOLIDATED:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_CONSOLIDATED_BUFFERS);
+              break;
+            case RAM_DIR_LUCENE:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_LUCENE_BUFFERS_WRAPPER);
               break;
             case FS_DIR:
               Path tmpPath = Files.createTempDirectory("fsindex");

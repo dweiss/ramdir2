@@ -1,4 +1,4 @@
-package com.carrotsearch.ramdir2;
+package org.apache.lucene.store;
 
 import java.io.EOFException;
 import java.nio.BufferUnderflowException;
@@ -14,7 +14,7 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
-public final class RamDataInput extends DataInput implements Accountable, RandomAccessInput {
+public final class ByteBuffersDataInput extends DataInput implements Accountable, RandomAccessInput {
   private final ByteBuffer[] blocks;
   private final int blockBits;
   private final int blockMask;
@@ -28,7 +28,7 @@ public final class RamDataInput extends DataInput implements Accountable, Random
    * must have an identical remaining number of bytes in the buffer (that is a power of two). The last
    * buffer can be of an arbitrary remaining length.
    */
-  public RamDataInput(List<ByteBuffer> buffers) {
+  public ByteBuffersDataInput(List<ByteBuffer> buffers) {
     ensureAssumptions(buffers);
 
     this.blocks = buffers.stream().map(buf -> buf.asReadOnlyBuffer()).toArray(ByteBuffer[]::new);
@@ -181,8 +181,8 @@ public final class RamDataInput extends DataInput implements Accountable, Random
     }
   }
   
-  public RamDataInput slice(long offset, long length) {
-    return new RamDataInput(sliceBufferList(Arrays.asList(this.blocks), offset, length));
+  public ByteBuffersDataInput slice(long offset, long length) {
+    return new ByteBuffersDataInput(sliceBufferList(Arrays.asList(this.blocks), offset, length));
   }
 
   @Override
@@ -242,7 +242,7 @@ public final class RamDataInput extends DataInput implements Accountable, Random
     }
   }
 
-  private static int determineBlockPage(List<ByteBuffer> buffers) {
+  static int determineBlockPage(List<ByteBuffer> buffers) {
     ByteBuffer first = buffers.get(0);
     final int blockPage = Math.toIntExact((long) first.position() + first.remaining());
     return blockPage;
@@ -260,7 +260,7 @@ public final class RamDataInput extends DataInput implements Accountable, Random
       long absStart = buffers.get(0).position() + offset;
       long absEnd = Math.toIntExact(absStart + length);
 
-      int blockBytes = RamDataInput.determineBlockPage(buffers);
+      int blockBytes = ByteBuffersDataInput.determineBlockPage(buffers);
       int blockBits = Integer.numberOfTrailingZeros(blockBytes);
       int blockMask = (1 << blockBits) - 1;
 

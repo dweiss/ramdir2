@@ -1,4 +1,4 @@
-package com.carrotsearch.ramdir2;
+package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -9,34 +9,45 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
 
-import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.UnicodeUtil;
 
-public final class RamDataOutput extends DataOutput implements Accountable {
-  final static ByteBuffer EMPTY = ByteBuffer.allocate(0);
-  final static List<ByteBuffer> EMPTY_LIST = Arrays.asList(EMPTY);
-  final static byte [] EMPTY_BYTE_ARRAY = {};
-  
-  private final static int DEFAULT_MIN_BITS_PER_BLOCK = 10; // 1024 B
-  private final static int DEFAULT_MAX_BITS_PER_BLOCK = 24; //   16 MB
+public final class ByteBuffersDataOutput extends DataOutput implements Accountable {
+  private final static ByteBuffer EMPTY = ByteBuffer.allocate(0);
+  private final static List<ByteBuffer> EMPTY_LIST = Arrays.asList(EMPTY);
+  private final static byte [] EMPTY_BYTE_ARRAY = {};
+
+  private final static IntFunction<ByteBuffer> ALLOCATE_BB_ON_HEAP = (size) -> {
+    return ByteBuffer.allocate(size);
+  };
+
+  final static int DEFAULT_MIN_BITS_PER_BLOCK = 10; // 1024 B
+  final static int DEFAULT_MAX_BITS_PER_BLOCK = 25; //   32 MB
 
   /**
    * Maximum number of blocks at the current {@link #blockBits} block size
    * before we increase block sizes.
    */
-  private final static int MAX_BLOCKS_BEFORE_BLOCK_EXPANSION = 100;
+  final static int MAX_BLOCKS_BEFORE_BLOCK_EXPANSION = 100;
 
   /**
    * Maximum block size: {@code 2^bits}.
    */
   private final int maxBitsPerBlock;
-  
+
+  /**
+   * {@link ByteBuffer} supplier.
+   */
+  private final IntFunction<ByteBuffer> blockAllocate;
+
   /**
    * Current block size: {@code 2^bits}.
    */
@@ -52,16 +63,28 @@ public final class RamDataOutput extends DataOutput implements Accountable {
    */
   private ByteBuffer currentBlock = EMPTY;
 
-  public RamDataOutput() {
-    this(DEFAULT_MIN_BITS_PER_BLOCK, DEFAULT_MAX_BITS_PER_BLOCK);
+  public ByteBuffersDataOutput(long expectedSize) {
+    this(computeBlockSizeBitsFor(expectedSize), DEFAULT_MAX_BITS_PER_BLOCK, ALLOCATE_BB_ON_HEAP);
   }
 
-  public RamDataOutput(int minBitsPerBlock, int maxBitsPerBlock) {
-    assert minBitsPerBlock >= 10;
-    assert minBitsPerBlock <= maxBitsPerBlock;
-    assert maxBitsPerBlock <= 31;
+  public ByteBuffersDataOutput() {
+    this(DEFAULT_MIN_BITS_PER_BLOCK, DEFAULT_MAX_BITS_PER_BLOCK, ALLOCATE_BB_ON_HEAP);
+  }
+
+  public ByteBuffersDataOutput(int minBitsPerBlock, 
+                               int maxBitsPerBlock,
+                               IntFunction<ByteBuffer> blockAllocate) {
+    if (minBitsPerBlock < 10 ||
+        minBitsPerBlock > maxBitsPerBlock ||
+        maxBitsPerBlock > 31) {
+      throw new IllegalArgumentException(String.format(Locale.ROOT,
+          "Invalid arguments: %s %s",
+          minBitsPerBlock,
+          maxBitsPerBlock));
+    }
+    this.blockAllocate = Objects.requireNonNull(blockAllocate, "Block allocator must not be null.");
     this.maxBitsPerBlock = maxBitsPerBlock;
-    updateBlockData(minBitsPerBlock);
+    this.blockBits = minBitsPerBlock;
   }
 
   @Override
@@ -152,10 +175,10 @@ public final class RamDataOutput extends DataOutput implements Accountable {
   }
 
   /**
-   * Return a {@link RamDataInput} for the set of current buffers ({@link #toBufferList()}). 
+   * Return a {@link ByteBuffersDataInput} for the set of current buffers ({@link #toBufferList()}). 
    */
-  public RamDataInput toDataInput() {
-    return new RamDataInput(toBufferList());
+  public ByteBuffersDataInput toDataInput() {
+    return new ByteBuffersDataInput(toBufferList());
   }
 
   /**
@@ -186,7 +209,7 @@ public final class RamDataOutput extends DataOutput implements Accountable {
   // boundary.
   // 
   // We also remove the IOException from methods because it (theoretically)
-  // cannot be thrown.
+  // cannot be thrown from byte buffers.
 
   @Override
   public void writeShort(short v) {
@@ -264,13 +287,17 @@ public final class RamDataOutput extends DataOutput implements Accountable {
       throw new UncheckedIOException(e);
     }      
   }
-  
-  private int blockSize() {
-    return 1 << blockBits;
+
+  @Override
+  public long ramBytesUsed() {
+    // Return a rough estimation for allocated blocks. Note that we do not make
+    // any special distinction for direct memory buffers.
+    return RamUsageEstimator.NUM_BYTES_OBJECT_REF * blocks.size() + 
+           blocks.stream().mapToLong(buf -> buf.capacity()).sum();
   }
 
-  private void updateBlockData(int blockBits) {
-    this.blockBits = blockBits;
+  private int blockSize() {
+    return 1 << blockBits;
   }
 
   private void appendBlock() {
@@ -281,7 +308,9 @@ public final class RamDataOutput extends DataOutput implements Accountable {
       }
     }
 
-    currentBlock = ByteBuffer.allocate(1 << blockBits);
+    final int requiredBlockSize = 1 << blockBits;
+    currentBlock = blockAllocate.apply(requiredBlockSize);
+    assert currentBlock.capacity() == requiredBlockSize;
     blocks.add(currentBlock);
   }
 
@@ -291,7 +320,7 @@ public final class RamDataOutput extends DataOutput implements Accountable {
     // We copy over data blocks to an output with one-larger block bit size.
     // We also discard references to blocks as we're copying to allow GC to
     // clean up partial results in case of memory pressure.
-    RamDataOutput cloned = new RamDataOutput(blockBits, blockBits);
+    ByteBuffersDataOutput cloned = new ByteBuffersDataOutput(blockBits, blockBits, blockAllocate);
     ByteBuffer block;
     while ((block = blocks.pollFirst()) != null) {
       block.flip();
@@ -299,25 +328,29 @@ public final class RamDataOutput extends DataOutput implements Accountable {
     }
 
     assert blocks.isEmpty();
-    updateBlockData(blockBits);
+    this.blockBits = blockBits;
     blocks.addAll(cloned.blocks);
   }
 
-  @Override
-  public long ramBytesUsed() {
-    // Return a rough estimation for allocated blocks. Note that we do not make
-    // any special distinction for direct memory buffers.
-    return RamUsageEstimator.NUM_BYTES_OBJECT_REF * blocks.size() + 
-           blocks.stream().mapToLong(buf -> buf.capacity()).sum();
+  private static int computeBlockSizeBitsFor(long bytes) {
+    long powerOfTwo = BitUtil.nextHighestPowerOfTwo(bytes / MAX_BLOCKS_BEFORE_BLOCK_EXPANSION);
+    if (powerOfTwo == 0) {
+      return DEFAULT_MIN_BITS_PER_BLOCK;
+    }
+    
+    int blockBits = (int) Long.numberOfTrailingZeros(powerOfTwo);
+    blockBits = Math.min(blockBits, DEFAULT_MAX_BITS_PER_BLOCK);
+    blockBits = Math.max(blockBits, DEFAULT_MIN_BITS_PER_BLOCK);
+    return blockBits;
   }
-  
+
   private static final long HALF_SHIFT = 10;
   private static final int SURROGATE_OFFSET = 
       Character.MIN_SUPPLEMENTARY_CODE_POINT - 
       (UnicodeUtil.UNI_SUR_HIGH_START << HALF_SHIFT) - UnicodeUtil.UNI_SUR_LOW_START;
 
   /**
-   * Chunked UTF16-UTF8 encoder.
+   * A consumer-based UTF16-UTF8 encoder (writes the input string in smaller buffers.).
    */
   private static int UTF16toUTF8(final CharSequence s, 
                                 final int offset, 

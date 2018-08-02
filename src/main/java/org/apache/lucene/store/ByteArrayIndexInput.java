@@ -1,10 +1,8 @@
-package com.carrotsearch.ramdir2;
-
-import java.io.IOException;
+package org.apache.lucene.store;
 
 import org.apache.lucene.store.IndexInput;
 
-public final class ByteArrayIndexInput extends IndexInput {
+final class ByteArrayIndexInput extends IndexInput {
   private byte[] bytes;
 
   private int offs;
@@ -13,10 +11,9 @@ public final class ByteArrayIndexInput extends IndexInput {
 
   public ByteArrayIndexInput(String description, byte[] bytes, int offs, int length) {
     super(description);
-    this.bytes = bytes;
     this.offs = offs;
+    this.bytes = bytes;
     this.length = length;
-
     this.pos = offs;
   }
 
@@ -31,10 +28,6 @@ public final class ByteArrayIndexInput extends IndexInput {
   @Override
   public long length() {
     return length;
-  }
-
-  public boolean eof() {
-    return getFilePointer() == length;
   }
 
   @Override
@@ -130,9 +123,15 @@ public final class ByteArrayIndexInput extends IndexInput {
 
   @Override
   public void close() {
+    bytes = null;
   }
 
-  public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-    return new ByteArrayIndexInput(sliceDescription, this.bytes, (int) offset, (int) length);
+  @Override
+  public IndexInput clone() {
+    return slice("Slice", 0, length());
+  }
+
+  public IndexInput slice(String sliceDescription, long offset, long length) {
+    return new ByteArrayIndexInput(sliceDescription, this.bytes, this.offs + (int) offset, (int) length);
   }
 }

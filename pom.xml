@@ -21,7 +21,7 @@
     <version.jcommander>1.69</version.jcommander>
     <version.guice>4.2.0</version.guice>
     <version.guava>25.1-jre</version.guava>
-    <version.lucene>7.2.1</version.lucene>
+    <version.lucene>7.4.0</version.lucene>
 
     <version.maven-assembly-plugin>2.6</version.maven-assembly-plugin>
     <version.maven-jar-plugin>3.0.2</version.maven-jar-plugin>
@@ -62,6 +62,13 @@
       <groupId>org.apache.lucene</groupId>
       <artifactId>lucene-codecs</artifactId>
       <version>${version.lucene}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.lucene</groupId>
+      <artifactId>lucene-test-framework</artifactId>
+      <version>${version.lucene}</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
