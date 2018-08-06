@@ -60,12 +60,12 @@ public class RamDirCmd extends CommandModule {
   final static String CMD_NAME = "ramdir";
 
   public static enum DirImpl {
-    RAM_DIR_CHUNKED,
-    RAM_DIR_CONSOLIDATED,
-    RAM_DIR_BAOS,
-    RAM_DIR_LUCENE,
-    FS_DIR,
-    RAM_DIR,
+    BBDIR_MANY_BUFS,
+    BBDIR_ONE_BUF,
+    BBDIR_BYTE_ARRAY,
+    BBDIR_LUCENE_BUFS,
+    FSDIR,
+    RAMDIR,
   }
   
   @Parameter(
@@ -185,22 +185,22 @@ public class RamDirCmd extends CommandModule {
         for (DirImpl impl : impls) {
           Directory dir;
           switch (impl) {
-            case RAM_DIR:
+            case RAMDIR:
               dir = new RAMDirectory();
               break;
-            case RAM_DIR_CHUNKED:
-              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_CHUNKED_BUFFERS);
+            case BBDIR_MANY_BUFS:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS);
               break;
-            case RAM_DIR_BAOS:
-              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_BYTE_ARRAY_INDEX_INPUT);
+            case BBDIR_BYTE_ARRAY:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_AS_BYTE_ARRAY);
               break;
-            case RAM_DIR_CONSOLIDATED:
-              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_CONSOLIDATED_BUFFERS);
+            case BBDIR_ONE_BUF:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_AS_ONE_BUFFER);
               break;
-            case RAM_DIR_LUCENE:
-              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_LUCENE_BUFFERS_WRAPPER);
+            case BBDIR_LUCENE_BUFS:
+              dir = new ByteBuffersDirectory(new SingleInstanceLockFactory(), ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS_LUCENE);
               break;
-            case FS_DIR:
+            case FSDIR:
               Path tmpPath = Files.createTempDirectory("fsindex");
               dir = FSDirectory.open(tmpPath);
               toDelete.add(tmpPath);
