@@ -148,6 +148,7 @@
             <manifest>
               <mainClass>com.carrotsearch.ramdir2.Main</mainClass>
               <addClasspath>true</addClasspath>
+              <useUniqueVersions>false</useUniqueVersions>
             </manifest>
           </archive>
         </configuration>
